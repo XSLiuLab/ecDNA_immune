@@ -72,7 +72,7 @@ ggplot(data=summ,aes(x=cancer,y=counts,fill=type))+
 
 And when combined with RNA expression data:
 
-```{r}
+```{r,message=FALSE,warning=FALSE}
 tpm_gene_log2 <- readRDS("../../tmp/tpm_gene_log2.rds")
 dt_exp <- dt %>% filter(sample_barcode %in% colnames(tpm_gene_log2))
 dt_exp %>% group_by(cancer) %>%
@@ -96,7 +96,7 @@ ggplot(data=summ,aes(x=cancer,y=counts,fill=type))+
 
 We used various methods to compare immune infiltration status between samples with and without ecDNA. We first check the total immune infiltration levels quantified by ESTIMATE, Xcell immune score and Leukocyte fraction.
 
-```{r,message=FALSE}
+```{r,message=FALSE,warning=FALSE}
 ##ESTIMATE
 pancancer_estimate_score <- readRDS("../data/pancancer_estimate_score.rds")
 dt_immune1 <- inner_join(
@@ -109,7 +109,7 @@ dt_immune1 <- dt_immune1 %>%
 ```
 
 
-```{r,message=FALSE}
+```{r,message=FALSE,warning=FALSE}
 ###MCPcounter cytotoxicity score and Xcell immune score
 immune <- data.table::fread("../data/infiltration_estimation_for_tcga.csv") %>%
   rename(sample=cell_type) %>%
@@ -124,7 +124,7 @@ dt_immune2 <- dt_immune2 %>%
   filter(cancer %in% summ$cancer)
 ```
 
-```{r,message=FALSE}
+```{r,message=FALSE,warning=FALSE}
 ##Leukocyte fraction
 immune_landscape <- readRDS("../data/immune_landscape.rds")
 dt_immune3 <- inner_join(
@@ -232,7 +232,7 @@ p5 + p6 + p7
 
 Then we look close into the difference of different immune cell types between samples with and without ecDNA using above methods:
 
-```{r,fig.height = 14, fig.width = 8, fig.align = "center",message=FALSE,warning=FALSE}
+```{r,warning=FALSE,message=FALSE}
 load("../data/ecDNA.Rdata")
 immune_data <- read.table("../data/infiltration_estimation_for_tcga.csv",header = T,sep = ",")
 ecDNA_tcga <- ecData3 %>% filter(sample_type %in% c("TM","TP")) %>% 
@@ -245,129 +245,6 @@ ecDNA_imm_info %>% group_by(tcga_id) %>%
   summarise(.,ecDNA=sum(ifelse(ecDNA=="ecDNA",1,0))) %>% 
   filter(ecDNA>20) -> ecDNA_20_info
 heat_data <- ecDNA_tcga %>% filter(tcga_id %in% ecDNA_20_info$tcga_id)
-
-
-##Heatmap
-tumor_type <- ecDNA_20_info$tcga_id
-heatmap_imm <- function(heat_data2,cell_names){
-  
-  if (length(cell_names>0)) {
-  heat_data2 <- heat_data2[,-which(colnames(heat_data2) %in% cell_names)]
-  }
-  
-  imm_ecDNA <- heat_data2[which(heat_data2$ecDNA=="ecDNA"),]
-  imm_NonecDNA <- heat_data2[which(heat_data2$ecDNA=="Non-ecDNA"),]
-  
-  heat_fig <- matrix(NA, ncol = length(9:length(heat_data2)), nrow = 8)
-  rownames(heat_fig) <- c("Pan-cancer",tumor_type)
-  colnames(heat_fig) <- colnames(heat_data2)[9:length(heat_data2)]
-  cell_type <- colnames(heat_data2)[9:length(heat_data2)]
-  
-  for (i in tumor_type) {
-    for (ii in cell_type) {
-      data1 <- median(imm_ecDNA[which(imm_ecDNA$tcga_id==i),][,ii])
-      data2 <- median(imm_NonecDNA[which(imm_NonecDNA$tcga_id==i),][,ii])
-      
-      heat_fig[i,ii] <- log(data1+1.001) / log(data2+1.001)
-    }
-  }
-  
-  for (ii in cell_type) {
-    data1 <- median(imm_ecDNA[,ii])
-    data2 <- median(imm_NonecDNA[,ii])
-    heat_fig["Pan-cancer",ii] <- log(data1+1.001) / log(data2+1.001)
-  }
-  
-  heat_fig2 <- heat_fig
-  heat_fig2 <- t(heat_fig2)
-  return(heat_fig2)
-  
-}
-library(grid)
-library(circlize)
-col_fun = colorRamp2(c(0.34, 1, 3), c("blue", "white", "red"))
-
-##CibersortABS
-CiberABS <- immune_data[,c(1,grep("*CIBERSORT.ABS$",colnames(immune_data)))] 
-colnames(CiberABS)[1] <- "sample_barcode"
-heat_data2 <- merge(heat_data,CiberABS)
-heat_data2$CD8_Treg._CIBERSORT.ABS <- log(heat_data2[,"T.cell.CD8._CIBERSORT.ABS"]+1.001)/log(heat_data2[,"T.cell.regulatory..Tregs._CIBERSORT.ABS"]+1.001)
-heat_data2$M1_M2._CIBERSORT.ABS <- log(heat_data2[,"Macrophage.M1_CIBERSORT.ABS"]+1.001)/log(heat_data2[,"Macrophage.M2_CIBERSORT.ABS"]+1.001)
-
-cell_names <- c("B.cell.naive_CIBERSORT.ABS","T.cell.CD4..memory.resting_CIBERSORT.ABS",
-                "T.cell.follicular.helper_CIBERSORT.ABS","NK.cell.resting_CIBERSORT.ABS",
-                "Macrophage.M0_CIBERSORT.ABS","Myeloid.dendritic.cell.resting_CIBERSORT.ABS",
-                "Myeloid.dendritic.cell.activated_CIBERSORT.ABS","Mast.cell.resting_CIBERSORT.ABS",
-                "Neutrophil_CIBERSORT.ABS","T.cell.CD4..naive_CIBERSORT.ABS",
-                "Eosinophil_CIBERSORT.ABS")
-heat_fig2 <- heatmap_imm(heat_data2,cell_names)
-rownames(heat_fig2) <- c("B cell memory","B cell plasma","T cell CD8","T cell CD4 memory activated",
-                         "T cell regulatory Tregs","T cell gamma delta","NK cell activated","Monocyte",
-                         "Macrophage M1","Macrophage M2","Mast cell activated","CD8/Tregs","M1/M2")
-heatmap_cibersortABS <- ComplexHeatmap::Heatmap(heat_fig2,cluster_rows = F,cluster_columns = F,name = " ",
-                                                row_title = "Cibersort",col = col_fun,
-                                                row_names_side = "right",column_names_rot = 45,column_names_gp = gpar(fontsize = 12),
-                                                row_names_gp = gpar(fontsize = 12))
-##Timer
-CiberABS <- immune_data[,c(1,grep("*_TIMER$",colnames(immune_data)))] 
-colnames(CiberABS)[1] <- "sample_barcode"
-heat_data2 <- merge(heat_data,CiberABS)
-cell_names <- NULL
-heat_fig2 <- heatmap_imm(heat_data2,cell_names)
-rownames(heat_fig2) <- c("B cell","T cell CD4","T cell CD8","Neutrophil","Macrophage","Myeloid dendritic cell")
-heatmap_timer <- ComplexHeatmap::Heatmap(heat_fig2,cluster_rows = F,cluster_columns = F,name = " ",
-                                         row_title = "Timer",col = col_fun,
-                                         row_names_side = "right",column_names_rot = 45)
-##Xcell
-CiberABS <- immune_data[,c(1,grep("*_XCELL$",colnames(immune_data)))] 
-colnames(CiberABS)[1] <- "sample_barcode"
-heat_data2 <- merge(heat_data,CiberABS)
-cell_names <- c("B.cell_XCELL", "T.cell.CD4..memory_XCELL","T.cell.CD4...non.regulatory._XCELL","T.cell.CD8..naive_XCELL",
-                "Common.lymphoid.progenitor_XCELL","Myeloid.dendritic.cell_XCELL","Macrophage_XCELL","Monocyte_XCELL",
-                "T.cell.CD4..Th1_XCELL","T.cell.CD4..Th2_XCELL", "B.cell.memory_XCELL","B.cell.naive_XCELL","T.cell.gamma.delta_XCELL")
-heat_fig2 <- heatmap_imm(heat_data2,cell_names)
-rownames(heat_fig2) <- c("Myeloid dendritic cell activated","T cell CD4 naive","T cell CD4 central memory",
-                         "T cell CD4 effector memory","T cell CD8","T cell CD8 central memory",
-                         "T cell CD8 effector memory","Class switched memory B cell","Common myeloid progenitor",
-                         "Endothelial cell","Eosinophil","Cancer associated fibroblast","Granulocyte monocyte progenitor",
-                         "Hematopoietic stem cell","Macrophage M1","Macrophage M2","Mast cell","Neutrophil",
-                         "NK cell","T cell NK","Plasmacytoid dendritic cell","B cell plasma","T cell regulatory Tregs",
-                         "immune score","stroma score","microenvironment score")
-heatmap_xcell <- ComplexHeatmap::Heatmap(heat_fig2,cluster_rows = F,cluster_columns = F,
-                                         row_title = "Xcell",col = col_fun,
-                                         name = " ",row_names_side ="right",column_names_rot = 45)
-
-##MCPCOUNTER
-CiberABS <- immune_data[,c(1,grep("*MCPCOUNTER$",colnames(immune_data)))] 
-colnames(CiberABS)[1] <- "sample_barcode"
-heat_data2 <- merge(heat_data,CiberABS)
-cell_names <- c("Cancer.associated.fibroblast_MCPCOUNTER")
-heat_fig2 <- heatmap_imm(heat_data2,cell_names)
-rownames(heat_fig2) <- c("T cell","T cell CD8","Cytotoxicity score","NK cell","B cell",
-                         "Monocyte","Macrophage monocyte","Myeloid dendritic cell","Neutrophil","Endothelial cell")
-heatmap_MCPCOUNTER <- ComplexHeatmap::Heatmap(heat_fig2, cluster_rows = F, cluster_columns = F, row_title = "MCPcounter",col = col_fun,
-                                              name = " ",row_names_side ="right",column_names_rot = 45)
-
-##QUANTISEQ
-CiberABS <- immune_data[,c(1,grep("*QUANTISEQ$",colnames(immune_data)))] 
-colnames(CiberABS)[1] <- "sample_barcode"
-heat_data2 <- merge(heat_data,CiberABS)
-cell_names <- c("uncharacterized.cell_QUANTISEQ","T.cell.CD4...non.regulatory._QUANTISEQ","Monocyte_QUANTISEQ")
-heat_fig2 <- heatmap_imm(heat_data2,cell_names)
-rownames(heat_fig2) <- c("B cell","Macrophage M1","Macrophage M2","Neutrophil",
-                         "NK cell","T cell CD8","T cell regulatory Tregs","Myeloid dendritic cell")
-heatmap_QUANTISEQ<- ComplexHeatmap::Heatmap(heat_fig2,cluster_rows = F,cluster_columns = F,
-                                            row_title = "Quantiseq",col = col_fun,
-                                            name = " ",row_names_side ="right",column_names_rot = 45)
-
-##joint heatmap
-library(ComplexHeatmap)
-ht_list = heatmap_cibersortABS %v% heatmap_MCPCOUNTER %v% heatmap_timer %v% heatmap_QUANTISEQ %v% heatmap_xcell
-draw(ht_list)
-```
-
-
-```{r,warning=FALSE,message=FALSE}
 ##Cibersort ABS
 CiberABS <- immune_data[,c(1,grep("*CIBERSORT.ABS$",colnames(immune_data)))] 
 CiberABS_names <- c("B.cell.memory_CIBERSORT.ABS","B.cell.plasma_CIBERSORT.ABS",
@@ -492,10 +369,9 @@ ggplot(data=draw_data,aes(x=Celltype,y=Composition,fill=Group))+
 
 ```
 
+Following is the full set of immune cells in various methods:
 
-
-
-```{r,fig.height = 14, fig.width = 14, fig.align = "center",message=FALSE}
+```{r,message=FALSE,warning=FALSE,fig.height = 14, fig.width = 14, fig.align = "center"}
 ##Boxplot
 library(reshape2)
 library(ggprism)
@@ -672,6 +548,129 @@ plots2 <- list(boxplot_cibersortABS,boxplot_MCPCOUNTER,boxplot_timer,boxplot_QUA
 lay_grid(plots2, cl)
 
 ```
+
+Then we checked the cancer specific difference, and the heatmap color indicates median ratio of infiltration level for specific immune cell and specific cancer type between ecDNA and non-ecDNA samples
+
+```{r,fig.height = 14, fig.width = 8, fig.align = "center",message=FALSE,warning=FALSE}
+##Heatmap
+tumor_type <- ecDNA_20_info$tcga_id
+heatmap_imm <- function(heat_data2,cell_names){
+  
+  if (length(cell_names>0)) {
+  heat_data2 <- heat_data2[,-which(colnames(heat_data2) %in% cell_names)]
+  }
+  
+  imm_ecDNA <- heat_data2[which(heat_data2$ecDNA=="ecDNA"),]
+  imm_NonecDNA <- heat_data2[which(heat_data2$ecDNA=="Non-ecDNA"),]
+  
+  heat_fig <- matrix(NA, ncol = length(9:length(heat_data2)), nrow = 8)
+  rownames(heat_fig) <- c("Pan-cancer",tumor_type)
+  colnames(heat_fig) <- colnames(heat_data2)[9:length(heat_data2)]
+  cell_type <- colnames(heat_data2)[9:length(heat_data2)]
+  
+  for (i in tumor_type) {
+    for (ii in cell_type) {
+      data1 <- median(imm_ecDNA[which(imm_ecDNA$tcga_id==i),][,ii])
+      data2 <- median(imm_NonecDNA[which(imm_NonecDNA$tcga_id==i),][,ii])
+      
+      heat_fig[i,ii] <- log(data1+1.001) / log(data2+1.001)
+    }
+  }
+  
+  for (ii in cell_type) {
+    data1 <- median(imm_ecDNA[,ii])
+    data2 <- median(imm_NonecDNA[,ii])
+    heat_fig["Pan-cancer",ii] <- log(data1+1.001) / log(data2+1.001)
+  }
+  
+  heat_fig2 <- heat_fig
+  heat_fig2 <- t(heat_fig2)
+  return(heat_fig2)
+  
+}
+library(grid)
+library(circlize)
+col_fun = colorRamp2(c(0.34, 1, 3), c("blue", "white", "red"))
+
+##CibersortABS
+CiberABS <- immune_data[,c(1,grep("*CIBERSORT.ABS$",colnames(immune_data)))] 
+colnames(CiberABS)[1] <- "sample_barcode"
+heat_data2 <- merge(heat_data,CiberABS)
+heat_data2$CD8_Treg._CIBERSORT.ABS <- log(heat_data2[,"T.cell.CD8._CIBERSORT.ABS"]+1.001)/log(heat_data2[,"T.cell.regulatory..Tregs._CIBERSORT.ABS"]+1.001)
+heat_data2$M1_M2._CIBERSORT.ABS <- log(heat_data2[,"Macrophage.M1_CIBERSORT.ABS"]+1.001)/log(heat_data2[,"Macrophage.M2_CIBERSORT.ABS"]+1.001)
+
+cell_names <- c("B.cell.naive_CIBERSORT.ABS","T.cell.CD4..memory.resting_CIBERSORT.ABS",
+                "T.cell.follicular.helper_CIBERSORT.ABS","NK.cell.resting_CIBERSORT.ABS",
+                "Macrophage.M0_CIBERSORT.ABS","Myeloid.dendritic.cell.resting_CIBERSORT.ABS",
+                "Myeloid.dendritic.cell.activated_CIBERSORT.ABS","Mast.cell.resting_CIBERSORT.ABS",
+                "Neutrophil_CIBERSORT.ABS","T.cell.CD4..naive_CIBERSORT.ABS",
+                "Eosinophil_CIBERSORT.ABS")
+heat_fig2 <- heatmap_imm(heat_data2,cell_names)
+rownames(heat_fig2) <- c("B cell memory","B cell plasma","T cell CD8","T cell CD4 memory activated",
+                         "T cell regulatory Tregs","T cell gamma delta","NK cell activated","Monocyte",
+                         "Macrophage M1","Macrophage M2","Mast cell activated","CD8/Tregs","M1/M2")
+heatmap_cibersortABS <- ComplexHeatmap::Heatmap(heat_fig2,cluster_rows = F,cluster_columns = F,name = " ",
+                                                row_title = "Cibersort",col = col_fun,
+                                                row_names_side = "right",column_names_rot = 45,column_names_gp = gpar(fontsize = 12),
+                                                row_names_gp = gpar(fontsize = 12))
+##Timer
+CiberABS <- immune_data[,c(1,grep("*_TIMER$",colnames(immune_data)))] 
+colnames(CiberABS)[1] <- "sample_barcode"
+heat_data2 <- merge(heat_data,CiberABS)
+cell_names <- NULL
+heat_fig2 <- heatmap_imm(heat_data2,cell_names)
+rownames(heat_fig2) <- c("B cell","T cell CD4","T cell CD8","Neutrophil","Macrophage","Myeloid dendritic cell")
+heatmap_timer <- ComplexHeatmap::Heatmap(heat_fig2,cluster_rows = F,cluster_columns = F,name = " ",
+                                         row_title = "Timer",col = col_fun,
+                                         row_names_side = "right",column_names_rot = 45)
+##Xcell
+CiberABS <- immune_data[,c(1,grep("*_XCELL$",colnames(immune_data)))] 
+colnames(CiberABS)[1] <- "sample_barcode"
+heat_data2 <- merge(heat_data,CiberABS)
+cell_names <- c("B.cell_XCELL", "T.cell.CD4..memory_XCELL","T.cell.CD4...non.regulatory._XCELL","T.cell.CD8..naive_XCELL",
+                "Common.lymphoid.progenitor_XCELL","Myeloid.dendritic.cell_XCELL","Macrophage_XCELL","Monocyte_XCELL",
+                "T.cell.CD4..Th1_XCELL","T.cell.CD4..Th2_XCELL", "B.cell.memory_XCELL","B.cell.naive_XCELL","T.cell.gamma.delta_XCELL")
+heat_fig2 <- heatmap_imm(heat_data2,cell_names)
+rownames(heat_fig2) <- c("Myeloid dendritic cell activated","T cell CD4 naive","T cell CD4 central memory",
+                         "T cell CD4 effector memory","T cell CD8","T cell CD8 central memory",
+                         "T cell CD8 effector memory","Class switched memory B cell","Common myeloid progenitor",
+                         "Endothelial cell","Eosinophil","Cancer associated fibroblast","Granulocyte monocyte progenitor",
+                         "Hematopoietic stem cell","Macrophage M1","Macrophage M2","Mast cell","Neutrophil",
+                         "NK cell","T cell NK","Plasmacytoid dendritic cell","B cell plasma","T cell regulatory Tregs",
+                         "immune score","stroma score","microenvironment score")
+heatmap_xcell <- ComplexHeatmap::Heatmap(heat_fig2,cluster_rows = F,cluster_columns = F,
+                                         row_title = "Xcell",col = col_fun,
+                                         name = " ",row_names_side ="right",column_names_rot = 45)
+
+##MCPCOUNTER
+CiberABS <- immune_data[,c(1,grep("*MCPCOUNTER$",colnames(immune_data)))] 
+colnames(CiberABS)[1] <- "sample_barcode"
+heat_data2 <- merge(heat_data,CiberABS)
+cell_names <- c("Cancer.associated.fibroblast_MCPCOUNTER")
+heat_fig2 <- heatmap_imm(heat_data2,cell_names)
+rownames(heat_fig2) <- c("T cell","T cell CD8","Cytotoxicity score","NK cell","B cell",
+                         "Monocyte","Macrophage monocyte","Myeloid dendritic cell","Neutrophil","Endothelial cell")
+heatmap_MCPCOUNTER <- ComplexHeatmap::Heatmap(heat_fig2, cluster_rows = F, cluster_columns = F, row_title = "MCPcounter",col = col_fun,
+                                              name = " ",row_names_side ="right",column_names_rot = 45)
+
+##QUANTISEQ
+CiberABS <- immune_data[,c(1,grep("*QUANTISEQ$",colnames(immune_data)))] 
+colnames(CiberABS)[1] <- "sample_barcode"
+heat_data2 <- merge(heat_data,CiberABS)
+cell_names <- c("uncharacterized.cell_QUANTISEQ","T.cell.CD4...non.regulatory._QUANTISEQ","Monocyte_QUANTISEQ")
+heat_fig2 <- heatmap_imm(heat_data2,cell_names)
+rownames(heat_fig2) <- c("B cell","Macrophage M1","Macrophage M2","Neutrophil",
+                         "NK cell","T cell CD8","T cell regulatory Tregs","Myeloid dendritic cell")
+heatmap_QUANTISEQ<- ComplexHeatmap::Heatmap(heat_fig2,cluster_rows = F,cluster_columns = F,
+                                            row_title = "Quantiseq",col = col_fun,
+                                            name = " ",row_names_side ="right",column_names_rot = 45)
+
+##joint heatmap
+library(ComplexHeatmap)
+ht_list = heatmap_cibersortABS %v% heatmap_MCPCOUNTER %v% heatmap_timer %v% heatmap_QUANTISEQ %v% heatmap_xcell
+draw(ht_list)
+```
+
 
 
 ## EcDNA and tumor immune typing
@@ -869,7 +868,7 @@ Tumors with ecDNA show comparable TMB and neoantigen counts, suggesting a compar
 
 Antigen presentation efficiency is another important determinant of tumor immunogenicity. Therefore, we first directly compared expression of MHC-I/MHC-II genes and related biosynthetic genes between samples with and without ecDNA:
 
-```{r,fig.height = 8, fig.width = 17, fig.align = "center",message=FALSE}
+```{r,message=FALSE,fig.height = 8, fig.width = 17, fig.align = "center"}
 tpm_gene_log2 <- readRDS("../../tmp/tpm_gene_log2.rds")
 tpm_gene <- tpm_gene_log2 %>%
   select(-id) %>%
@@ -930,7 +929,7 @@ ggplot(data=tpm_dt,aes(x=gene,y=exp,fill=ecDNA))+
 
 We also checked the cancer type specific MHC-I/II and related genes expression difference, heatmap color indicates median difference of expression for specific gene in specific cancer type between ecDNA and non-ecDNA samples:
 
-```{r,message=FALSE,fig.height = 12, fig.width = 6, fig.align = "center"}
+```{r,message=FALSE,warning=FALSE,fig.height = 12, fig.width = 6, fig.align = "center"}
 mat <- matrix(runif(37*7),nrow = 37,ncol = 7)
 colnames(mat) <- need_cancer
 mat <- as.data.frame(mat)
@@ -1033,7 +1032,7 @@ The impaired expression of MHC I and II could be the mechanism underlying decrea
 
 The presence of ecDNA has been shown to promote tumor heterogeneity through unequal ecDNA segregation during cell division. Tumor heterogeneity status has been quantified based on the variation level of VAF:
 
-```{r}
+```{r,message=FALSE}
 ##MATH calculation code can be found in code/math.R
 MATH <- readRDS("../data/TCGA_MATH_Value.rds")
 colnames(MATH) <- c("MATH_Value","sample_barcode")
