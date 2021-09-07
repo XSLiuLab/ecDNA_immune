@@ -1,0 +1,26 @@
+"cancer","ecDNA positive","ecDNA negative"
+"BLCA",33,79
+"BRCA",29,79
+"CESC",15,50
+"COAD",4,29
+"DLBC",1,6
+"ESCA",28,30
+"GBM",18,11
+"HNSC",39,113
+"KICH",1,49
+"KIRC",1,43
+"KIRP",2,34
+"LAML",0,31
+"LGG",11,72
+"LIHC",4,46
+"LUAD",22,119
+"LUSC",14,36
+"OV",10,25
+"PRAD",2,119
+"READ",0,2
+"SARC",17,19
+"SKCM",23,113
+"STAD",27,87
+"THCA",0,133
+"UCEC",1,8
+"UVM",1,48
