@@ -988,75 +988,8 @@ ggplot(data=gsva_l,aes(x=type,y=score,fill=ecDNA))+
   labs(y="GSVA Score")
 ```
 
-We also calculated pathway activities using GSEA. Firstly, Deseq2 was used to identify differential expressed genes between samples with and without ecDNA in specific cancer types and then applied GSEA to quantify pathway activities. Colors in the heatmap indicate ES scores in 6 type of cancers with at least 20 tumors with ecDNA, and values in heatmap cells indicates FDR corrected p values.  
 
-```{r,warning=FALSE,message=FALSE}
-res_gsea <- readRDS("../data/res_gsea.rds")
-gsea_res <- bind_rows(res_gsea,.id = "cancers")
-gsea_res <- gsea_res %>%
-  select(cancers,pathway,ES,pval) %>%
-  mutate(pathway=case_when(
-    pathway == "GOBP_ANTIGEN_PROCESSING_AND_PRESENTATION_OF_PEPTIDE_ANTIGEN_VIA_MHC_CLASS_I" ~ "GO MHC-I",
-    pathway == "GOBP_ANTIGEN_PROCESSING_AND_PRESENTATION_OF_PEPTIDE_OR_POLYSACCHARIDE_ANTIGEN_VIA_MHC_CLASS_II" ~ "GO MHC-II",
-    pathway == "REACTOME_CLASS_I_MHC_MEDIATED_ANTIGEN_PROCESSING_PRESENTATION" ~ "REACTOME MHC-I",
-    pathway == "REACTOME_MHC_CLASS_II_ANTIGEN_PRESENTATION" ~ "REACTOME MHC-II"
-  ))
-gsea_res$padj <- p.adjust(gsea_res$pval,method = "fdr")
-gsea_res <- gsea_res %>% select(-pval)
-gsea_res <- gsea_res %>%
-  mutate(ES=ifelse(padj > 0.05,NA,ES))
-P <- gsea_res %>% select(-ES)
-P$padj  <- format(P$padj,digits=3,scientific = TRUE)
-ES <- gsea_res %>% select(-padj)
-ES$ES <- as.numeric(format(ES$ES,digits=3))
-P <- P %>%
-  pivot_wider(names_from = cancers,values_from = padj) %>% as.data.frame()
-ES <- ES %>%
-  pivot_wider(names_from = cancers,values_from = ES) %>% as.data.frame()
-rownames(P) <- P$pathway
-P <- P %>% select(-pathway)
-rownames(ES) <- ES$pathway
-ES <- ES %>% select(-pathway)
-
-library(grid)
-library(circlize)
-col_fun = colorRamp2(c(-2.8, 2.3), c("green", "red"))
-ComplexHeatmap::Heatmap(ES,cluster_rows = F,cluster_columns = F,name = "ES",column_names_side="top",
-                        na_col = "white",
-                        cell_fun = function(j, i, x, y, w, h, col) { # add text to each grid
-                          grid.text(P[i, j], x, y)
-                        })
-```
-
-The impaired expression of MHC I and II could be the mechanism underlying decreased immune infiltration in tumors with ecDNA. 
-
-The presence of ecDNA has been shown to promote tumor heterogeneity through unequal ecDNA segregation during cell division. Tumor heterogeneity status has been quantified based on the variation level of VAF:
-
-```{r,message=FALSE}
-##MATH calculation code can be found in code/math.R
-MATH <- readRDS("../data/TCGA_MATH_Value.rds")
-colnames(MATH) <- c("MATH_Value","sample_barcode")
-
-dt_math <- inner_join(MATH,dt %>% mutate(sample_barcode=substr(sample_barcode,1,12)))
-dt_math %>% group_by(cancer) %>% 
-  summarise(c=sum(ecDNA=="yes")) %>% filter(c>20) -> summ
-dt_math <- dt_math %>% filter(cancer %in% summ$cancer)
-
-dt_math <- dt_math %>%
-  mutate(ecDNA = ifelse(ecDNA == "yes","ecDNA","Non-ecDNA"))
-dt_math$ecDNA <- factor(dt_math$ecDNA,levels = c("Non-ecDNA","ecDNA"))
-dt_math$MATH_Value <- as.numeric(dt_math$MATH_Value)
-ggplot(data=dt_math,aes(x=cancer,y=log(MATH_Value+1),fill=ecDNA))+
-  geom_boxplot()+
-  stat_compare_means(aes(label = ..p.signif..))+
-  theme_prism()+
-  theme(axis.text.x = element_text(angle = 45,vjust = 1, hjust = 1) )+
-  labs(y="log(MATH + 1)",x= NULL,title = NULL)
-```
-
-Tumors with ecDNA show significantly up-regulated heterogeneity level. The up-regulated tumor heterogeneity could be another mechanism to promote tumor immune evasion. The presence of ecDNA is associated with increased tumor heterogeneity, decreased antigen presentation gene expression, leads to impaired tumor immunogenicity.
-
-
+Cytoplasmic DNA is known to stimulate immune response through cGAS-STING pathway, and in tumors with ecDNA, this pathway is not over-activated:
 ```{r,message=FALSE,warning=FALSE}
 ##cGAS-STING 
 tpm_gene_log2 <- readRDS("../../tmp/tpm_gene_log2.rds")
@@ -1097,7 +1030,7 @@ ggplot(data=tpm_dt,aes(x=gene,y=exp,fill=ecDNA))+
   theme(axis.title.x = element_blank())
 ```
 
-Cytoplasmic DNA is known to stimulate immune response through cGAS-STING pathway, and in tumors with ecDNA, this pathway is not over-activated.
+
 
 
 
