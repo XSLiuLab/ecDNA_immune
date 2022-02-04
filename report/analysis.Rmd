@@ -73,7 +73,7 @@ ggplot(data=summ,aes(x=cancer,y=counts,fill=type))+
 And when combined with RNA expression data:
 
 ```{r,message=FALSE,warning=FALSE}
-tpm_gene_log2 <- readRDS("../../tmp/tpm_gene_log2.rds")
+tpm_gene_log2 <- readRDS("../../tmp/tpm_gene_log2_1.rds")
 dt_exp <- dt %>% filter(sample_barcode %in% colnames(tpm_gene_log2))
 dt_exp %>% group_by(cancer) %>%
   summarise(total_sample=n(),
@@ -739,7 +739,7 @@ We next checked the expression difference of immune inhibitory immune checkpoint
 
 ```{r,message=FALSE,fig.height = 6, fig.width = 10, fig.align = "center"}
 checkpoint <- c("ADORA2A", "CD276", "VTCN1", "BTLA", "CTLA4", "IDO1","LAG3","CYBB","PDCD1",
-                "HAVCR2","C10orf54","SIGLEC7")
+                "HAVCR2","C10orf54","SIGLEC7","CD274")
 tpm_gene_log2 <- readRDS("../../tmp/tpm_gene_log2.rds")
 tpm_gene_log2 <- tpm_gene_log2[!duplicated(tpm_gene_log2$gene),]
 tpm_gene <- tpm_gene_log2 %>%
@@ -779,7 +779,7 @@ ggplot(data=tpm_dt,aes(x=gene,y=exp,fill=ecDNA))+
 Then we checked the cancer type specific checkpoint expression difference, heatmap color indicates median difference of expression for specific gene in specific cancer type between ecDNA and non-ecDNA samples:
 
 ```{r,warning=FALSE,message=FALSE}
-mat <- matrix(runif(12*7),nrow = 12,ncol = 7)
+mat <- matrix(runif(13*7),nrow = 13,ncol = 7)
 colnames(mat) <- unique(tpm_gene$cancer)
 mat <- as.data.frame(mat)
 mat$gene <- unique(tpm_dt$gene)
