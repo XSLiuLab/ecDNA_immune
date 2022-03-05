@@ -32,7 +32,11 @@ This repository provides the analysis reports, code and data for readers who are
 
 ## Citation
 
+Wu, T., Wu, C., Zhao, X. et al. Extrachromosomal DNA formation enables tumor immune escape potentially through regulating antigen presentation gene expression. Sci Rep 12, 3590 (2022). https://doi.org/10.1038/s41598-022-07530-8
+
 ## Acknowledgement
+
+We thank ShanghaiTech University High Performance Computing Public Service Platform for computing services. We thank Raymond Shuter for editing the text. We thank multi-omics facility, molecular and cell biology core facility of ShanghaiTech University for technical help. This work was supported by Shanghai Science and Technology Commission (21ZR1442400), the National Natural Science Foundation of China (31771373), and startup funding from ShanghaiTech University.
 
 ## License
 
